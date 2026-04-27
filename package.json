@@ -1,0 +1,27 @@
+{
+  "name": "auto-post-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test-fb": "node tests/test-facebook.js",
+    "test-sheets": "node tests/test-sheets.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "google-auth-library": "^10.6.2",
+    "google-spreadsheet": "^5.2.0",
+    "node-cron": "^4.2.1",
+    "puppeteer": "^24.42.0",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
