@@ -8,6 +8,7 @@
     "dev": "nodemon src/index.js",
     "test-fb": "node tests/test-facebook.js",
     "test-sheets": "node tests/test-sheets.js",
+    "test-flow": "node tests/test-flow.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,8 +16,8 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^17.4.2",
-    "google-auth-library": "^10.6.2",
-    "google-spreadsheet": "^5.2.0",
+    "google-auth-library": "^9.15.1",
+    "google-spreadsheet": "^4.1.1",
     "node-cron": "^4.2.1",
     "puppeteer": "^24.42.0",
     "winston": "^3.19.0"

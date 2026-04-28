@@ -3,6 +3,8 @@ const fs = require('fs').promises;
 const BasePublisher = require('./BasePublisher');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { downloadImage } = require('../utils/downloadImage');
+const path = require('path');
 
 class FacebookPublisher extends BasePublisher {
   constructor() {
@@ -119,7 +121,44 @@ class FacebookPublisher extends BasePublisher {
 
           // 3. Đăng ảnh (nếu có)
           if (postData.images && postData.images.length > 0) {
-            // Upload ảnh thông qua element input[type="file"]
+            logger.info(`[Facebook] Đang tải ${postData.images.length} ảnh về để upload...`);
+            const localImagePaths = [];
+            const tmpFolder = path.join(process.cwd(), 'tmp');
+
+            try {
+              // 3.1. Tải toàn bộ ảnh từ link về thư mục tmp/
+              for (const imgUrl of postData.images) {
+                if (imgUrl.trim() !== '') {
+                  const localPath = await downloadImage(imgUrl.trim(), tmpFolder);
+                  localImagePaths.push(localPath);
+                }
+              }
+
+              // 3.2. Tìm thẻ input type="file" để upload ảnh lên Facebook
+              const fileInputSelector = 'input[type="file"][accept^="image"]';
+              
+              // Chờ thẻ input xuất hiện. Nếu không thấy, Facebook có thể bắt click nút "Ảnh/Video" trước
+              await page.waitForSelector(fileInputSelector, { timeout: 5000 }).catch(() => null);
+              const fileInput = await page.$(fileInputSelector);
+              
+              if (fileInput && localImagePaths.length > 0) {
+                // Đẩy đường dẫn ảnh vào thẻ input
+                await fileInput.uploadFile(...localImagePaths);
+                logger.info(`[Facebook] Đã đẩy ${localImagePaths.length} ảnh vào form. Đang chờ ảnh upload...`);
+                
+                // Đợi Facebook tải ảnh lên giao diện (tuỳ mạng, thường mất vài giây)
+                await new Promise(r => setTimeout(r, 8000));
+              } else {
+                logger.warn('[Facebook] Không tìm thấy thẻ input tải ảnh. (Có thể giao diện cần click nút thêm Ảnh/Video trước).');
+              }
+            } catch (imgError) {
+               logger.error('[Facebook] Lỗi trong quá trình xử lý ảnh:', imgError.message);
+            } finally {
+              // 3.3 Dọn dẹp rác: Xoá ảnh ở thư mục tmp đi
+              for (const localPath of localImagePaths) {
+                await fs.unlink(localPath).catch(e => logger.warn(`Không thể xoá file tạm ${localPath}`));
+              }
+            }
           }
 
           // 4. Bấm nút đăng
