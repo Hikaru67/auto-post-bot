@@ -17,8 +17,8 @@ class FacebookPublisher extends BasePublisher {
       return false;
     }
 
-    if (config.facebook.groups.length === 0) {
-      logger.warn('Chưa cấu hình group Facebook nào để đăng');
+    if (!config.facebook.groupsMapPath) {
+      logger.warn('Chưa cấu hình đường dẫn file groups.json');
       return false;
     }
 
@@ -67,8 +67,30 @@ class FacebookPublisher extends BasePublisher {
       }
       logger.info('[Facebook] Đã xác nhận trạng thái đăng nhập với Cookie!');
 
+      // Load danh sách nhóm theo Khu vực (Region) từ groups.json
+      let targetGroups = [];
+      try {
+        const groupsMap = JSON.parse(await fs.readFile(config.facebook.groupsMapPath, 'utf8'));
+        const region = postData.region && postData.region.trim() !== '' ? postData.region.trim() : 'Mặc định';
+
+        if (groupsMap[region] && Array.isArray(groupsMap[region])) {
+          targetGroups = groupsMap[region];
+        } else if (groupsMap['Mặc định']) {
+          logger.warn(`[Facebook] Không tìm thấy mapping cho khu vực '${region}'. Sử dụng danh sách 'Mặc định'.`);
+          targetGroups = groupsMap['Mặc định'];
+        }
+      } catch (err) {
+        logger.error(`[Facebook] Lỗi khi đọc file cấu hình nhóm ${config.facebook.groupsMapPath}`, err.message);
+        return false;
+      }
+
+      if (targetGroups.length === 0) {
+        logger.warn('[Facebook] Không có group Facebook nào được cấu hình cho bài đăng này.');
+        return false;
+      }
+
       let successCount = 0;
-      for (const groupUrl of config.facebook.groups) {
+      for (const groupUrl of targetGroups) {
         logger.info(`[Facebook] Truy cập group: ${groupUrl}`);
         await page.goto(groupUrl, { waitUntil: 'networkidle2' });
 
@@ -113,10 +135,16 @@ class FacebookPublisher extends BasePublisher {
           await new Promise(r => setTimeout(r, 3000)); // Chờ popup nhập text hiện ra
 
           // 2. Điền nội dung
+          // Sinh mã chống Spam (Token ngẫu nhiên cho từng group)
+          const antiSpamToken = Math.random().toString(36).substring(2, 8).toUpperCase();
+          const regionCode = postData.region ? postData.region.replace(/\\s+/g, '').substring(0, 4) : 'BDS';
+          const antiSpamText = `\n\n(ID: ${regionCode}-${antiSpamToken})`;
+
           // Kết hợp Title và Content (nếu có Title)
-          const textToPost = postData.title ? `[${postData.title}]\n\n${postData.content}` : postData.content;
-          
-          // Cần tìm đến thẻ div role="textbox" đang focus
+          let textToPost = postData.title ? `[${postData.title}]\n\n${postData.content}` : postData.content;
+          textToPost += antiSpamText; // Gắn anti-spam vào cuối
+
+          // Gõ nội dung vào ô textbox
           await page.keyboard.type(textToPost, { delay: 20 });
 
           // 3. Đăng ảnh (nếu có)
@@ -136,23 +164,23 @@ class FacebookPublisher extends BasePublisher {
 
               // 3.2. Tìm thẻ input type="file" để upload ảnh lên Facebook
               const fileInputSelector = 'input[type="file"][accept^="image"]';
-              
+
               // Chờ thẻ input xuất hiện. Nếu không thấy, Facebook có thể bắt click nút "Ảnh/Video" trước
               await page.waitForSelector(fileInputSelector, { timeout: 5000 }).catch(() => null);
               const fileInput = await page.$(fileInputSelector);
-              
+
               if (fileInput && localImagePaths.length > 0) {
                 // Đẩy đường dẫn ảnh vào thẻ input
                 await fileInput.uploadFile(...localImagePaths);
                 logger.info(`[Facebook] Đã đẩy ${localImagePaths.length} ảnh vào form. Đang chờ ảnh upload...`);
-                
+
                 // Đợi Facebook tải ảnh lên giao diện (tuỳ mạng, thường mất vài giây)
                 await new Promise(r => setTimeout(r, 8000));
               } else {
                 logger.warn('[Facebook] Không tìm thấy thẻ input tải ảnh. (Có thể giao diện cần click nút thêm Ảnh/Video trước).');
               }
             } catch (imgError) {
-               logger.error('[Facebook] Lỗi trong quá trình xử lý ảnh:', imgError.message);
+              logger.error('[Facebook] Lỗi trong quá trình xử lý ảnh:', imgError.message);
             } finally {
               // 3.3 Dọn dẹp rác: Xoá ảnh ở thư mục tmp đi
               for (const localPath of localImagePaths) {
@@ -166,7 +194,7 @@ class FacebookPublisher extends BasePublisher {
           const isPosted = await page.evaluate(() => {
             // Thay vì dùng chuỗi class rất dài và dễ đổi, ta quét qua tất cả các phần tử đóng vai trò là nút bấm
             const buttons = Array.from(document.querySelectorAll('div[role="button"], span'));
-            
+
             const target = buttons.find(el => {
               const text = (el.innerText || '').trim().toLowerCase();
               return text === 'đăng' || text === 'post';
@@ -179,7 +207,7 @@ class FacebookPublisher extends BasePublisher {
 
             return false;
           });
-          
+
           if (!isPosted) {
             logger.warn(`[Facebook] Cảnh báo: Không thể tìm thấy nút Đăng bài (có chữ 'Đăng' hoặc 'Post').`);
           }

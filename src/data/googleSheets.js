@@ -47,6 +47,7 @@ class GoogleSheetsService {
 
       const postData = {
         rowNumber: nextRow.rowNumber,
+        region: nextRow.get('Region') || '',
         title: nextRow.get('Title') || '',
         content: nextRow.get('Content') || '',
         images: nextRow.get('Images') ? nextRow.get('Images').split(',').map(i => i.trim()) : [],

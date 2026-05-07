@@ -8,7 +8,8 @@ module.exports = {
   },
   facebook: {
     cookiePath: process.env.FB_COOKIE_PATH || './cookies.json',
-    groups: process.env.TARGET_FB_GROUPS ? process.env.TARGET_FB_GROUPS.split(',').map(g => g.trim()) : [],
+    // Mảng groups cũ được thay thế bằng cấu trúc map trong groups.json
+    groupsMapPath: './groups.json',
   },
   schedule: {
     cron: process.env.CRON_SCHEDULE || '0 6,12,20 * * *',
