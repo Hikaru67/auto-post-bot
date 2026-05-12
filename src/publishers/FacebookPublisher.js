@@ -26,7 +26,7 @@ class FacebookPublisher extends BasePublisher {
     let browser;
     try {
       browser = await puppeteer.launch({
-        headless: false, // Mở UI trình duyệt để dễ quan sát/debug, chạy thật có thể đổi sang 'new'
+        headless: true, // Mở UI trình duyệt để dễ quan sát/debug, chạy thật có thể đổi sang 'new'
         args: ['--disable-notifications', '--no-sandbox']
       });
 
@@ -89,12 +89,32 @@ class FacebookPublisher extends BasePublisher {
         return false;
       }
 
-      let successCount = 0;
-      for (const groupUrl of targetGroups) {
-        logger.info(`[Facebook] Truy cập group: ${groupUrl}`);
-        await page.goto(groupUrl, { waitUntil: 'networkidle2' });
+      // Tải ảnh về 1 lần để dùng chung cho tất cả các group
+      let sharedLocalImagePaths = [];
+      const tmpFolder = path.join(process.cwd(), 'tmp');
+      if (postData.images && postData.images.length > 0) {
+        logger.info(`[Facebook] Đang tải ${postData.images.length} ảnh về để upload chung cho các nhóm...`);
+        for (const imgUrl of postData.images) {
+          if (imgUrl.trim() !== '') {
+            try {
+              const localPath = await downloadImage(imgUrl.trim(), tmpFolder);
+              sharedLocalImagePaths.push(localPath);
+            } catch (err) {
+              logger.warn(`[Facebook] Lỗi khi tải ảnh ${imgUrl}:`, err.message);
+            }
+          }
+        }
+      }
 
+      let successCount = 0;
+      const CONCURRENCY_LIMIT = 3; // Số lượng tab chạy song song
+
+      const processGroup = async (groupUrl) => {
+        const groupPage = await browser.newPage();
         try {
+          logger.info(`[Facebook] Truy cập group: ${groupUrl}`);
+          await groupPage.goto(groupUrl, { waitUntil: 'networkidle2' });
+
           // Lưu ý: Các Selector của Facebook thay đổi liên tục và bị obfuscate (mã hóa tên class).
           // Đoạn mã dưới đây là bộ khung skeleton mô phỏng lại các bước đăng bài:
           // Bạn sẽ cần inspect element thực tế trên máy để trỏ chính xác selector hoặc dùng xpath.
@@ -102,7 +122,7 @@ class FacebookPublisher extends BasePublisher {
           // 1. Quét tìm nút "Tạo bài viết" bằng text hiển thị thay vì dùng Class (bền vững hơn)
           await new Promise(r => setTimeout(r, 3000)); // Đợi giao diện render xong
 
-          const clicked = await page.evaluate(() => {
+          const clicked = await groupPage.evaluate(() => {
             // Danh sách các từ khoá phổ biến của ô nhập bài viết trên Facebook Group (Cả tiếng Việt & Anh)
             const keywords = ['viết gì đó', 'write something', 'bạn viết gì đi', 'tạo bài viết công khai', 'create a public post'];
 
@@ -145,53 +165,36 @@ class FacebookPublisher extends BasePublisher {
           textToPost += antiSpamText; // Gắn anti-spam vào cuối
 
           // Gõ nội dung vào ô textbox
-          await page.keyboard.type(textToPost, { delay: 20 });
+          await groupPage.keyboard.type(textToPost, { delay: 20 });
 
           // 3. Đăng ảnh (nếu có)
-          if (postData.images && postData.images.length > 0) {
-            logger.info(`[Facebook] Đang tải ${postData.images.length} ảnh về để upload...`);
-            const localImagePaths = [];
-            const tmpFolder = path.join(process.cwd(), 'tmp');
-
+          if (sharedLocalImagePaths.length > 0) {
             try {
-              // 3.1. Tải toàn bộ ảnh từ link về thư mục tmp/
-              for (const imgUrl of postData.images) {
-                if (imgUrl.trim() !== '') {
-                  const localPath = await downloadImage(imgUrl.trim(), tmpFolder);
-                  localImagePaths.push(localPath);
-                }
-              }
-
-              // 3.2. Tìm thẻ input type="file" để upload ảnh lên Facebook
+              // 3.1. Tìm thẻ input type="file" để upload ảnh lên Facebook
               const fileInputSelector = 'input[type="file"][accept^="image"]';
 
               // Chờ thẻ input xuất hiện. Nếu không thấy, Facebook có thể bắt click nút "Ảnh/Video" trước
-              await page.waitForSelector(fileInputSelector, { timeout: 5000 }).catch(() => null);
-              const fileInput = await page.$(fileInputSelector);
+              await groupPage.waitForSelector(fileInputSelector, { timeout: 5000 }).catch(() => null);
+              const fileInput = await groupPage.$(fileInputSelector);
 
-              if (fileInput && localImagePaths.length > 0) {
+              if (fileInput) {
                 // Đẩy đường dẫn ảnh vào thẻ input
-                await fileInput.uploadFile(...localImagePaths);
-                logger.info(`[Facebook] Đã đẩy ${localImagePaths.length} ảnh vào form. Đang chờ ảnh upload...`);
+                await fileInput.uploadFile(...sharedLocalImagePaths);
+                logger.info(`[Facebook] Đã đẩy ${sharedLocalImagePaths.length} ảnh vào form trên group ${groupUrl}`);
 
                 // Đợi Facebook tải ảnh lên giao diện (tuỳ mạng, thường mất vài giây)
                 await new Promise(r => setTimeout(r, 8000));
               } else {
-                logger.warn('[Facebook] Không tìm thấy thẻ input tải ảnh. (Có thể giao diện cần click nút thêm Ảnh/Video trước).');
+                logger.warn(`[Facebook] Không tìm thấy thẻ input tải ảnh trên group ${groupUrl}. (Có thể giao diện cần click nút thêm Ảnh/Video trước).`);
               }
             } catch (imgError) {
-              logger.error('[Facebook] Lỗi trong quá trình xử lý ảnh:', imgError.message);
-            } finally {
-              // 3.3 Dọn dẹp rác: Xoá ảnh ở thư mục tmp đi
-              for (const localPath of localImagePaths) {
-                await fs.unlink(localPath).catch(e => logger.warn(`Không thể xoá file tạm ${localPath}`));
-              }
+              logger.error(`[Facebook] Lỗi trong quá trình xử lý ảnh trên group ${groupUrl}:`, imgError.message);
             }
           }
 
           // 4. Bấm nút đăng
-          // await page.click('div[aria-label="Post"], div[aria-label="Đăng"]');
-          const isPosted = await page.evaluate(() => {
+          // await groupPage.click('div[aria-label="Post"], div[aria-label="Đăng"]');
+          const isPosted = await groupPage.evaluate(() => {
             // Thay vì dùng chuỗi class rất dài và dễ đổi, ta quét qua tất cả các phần tử đóng vai trò là nút bấm
             const buttons = Array.from(document.querySelectorAll('div[role="button"], span'));
 
@@ -209,18 +212,39 @@ class FacebookPublisher extends BasePublisher {
           });
 
           if (!isPosted) {
-            logger.warn(`[Facebook] Cảnh báo: Không thể tìm thấy nút Đăng bài (có chữ 'Đăng' hoặc 'Post').`);
+            logger.warn(`[Facebook] Cảnh báo: Không thể tìm thấy nút Đăng bài (có chữ 'Đăng' hoặc 'Post') trên group ${groupUrl}.`);
           }
 
           await new Promise(r => setTimeout(r, 5000)); // Chờ bài viết đăng xong
 
           logger.info(`[Facebook] Đã post bài lên group ${groupUrl} (Skeleton)`);
           successCount++;
-
-          // Nghỉ một chút giữa các group để tránh Facebook khóa tài khoản (checkpoint)
-          await new Promise(r => setTimeout(r, 5000 + Math.random() * 5000));
         } catch (postError) {
-          logger.error(`[Facebook] Lỗi khi đăng bài lên group ${groupUrl}`, postError);
+          logger.error(`[Facebook] Lỗi khi đăng bài lên group ${groupUrl}`, postError.message);
+        } finally {
+          await groupPage.close().catch(() => { });
+        }
+      };
+
+      // Xử lý song song theo batch (chunk)
+      for (let i = 0; i < targetGroups.length; i += CONCURRENCY_LIMIT) {
+        const chunk = targetGroups.slice(i, i + CONCURRENCY_LIMIT);
+        logger.info(`[Facebook] Đang xử lý batch ${Math.floor(i / CONCURRENCY_LIMIT) + 1}: Đăng lên ${chunk.length} groups cùng lúc...`);
+
+        const promises = chunk.map(groupUrl => processGroup(groupUrl));
+        await Promise.all(promises);
+
+        // Nghỉ một chút giữa các batch để tránh Facebook khóa tài khoản
+        if (i + CONCURRENCY_LIMIT < targetGroups.length) {
+          logger.info(`[Facebook] Đã xong batch, nghỉ một chút trước khi sang batch tiếp theo...`);
+          await new Promise(r => setTimeout(r, 5000 + Math.random() * 5000));
+        }
+      }
+
+      // Dọn dẹp rác: Xoá ảnh ở thư mục tmp sau khi đăng xong tất cả các group
+      if (sharedLocalImagePaths && sharedLocalImagePaths.length > 0) {
+        for (const localPath of sharedLocalImagePaths) {
+          await fs.unlink(localPath).catch(e => logger.warn(`Không thể xoá file tạm ${localPath}`));
         }
       }
 

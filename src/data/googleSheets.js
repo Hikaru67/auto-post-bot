@@ -30,33 +30,34 @@ class GoogleSheetsService {
     }
   }
 
-  async getNextPost() {
+  async getUnpostedPosts() {
     if (!this.doc) await this.init();
     
     try {
       const sheet = this.doc.sheetsByIndex[0]; // Lấy sheet đầu tiên
       const rows = await sheet.getRows();
 
-      // Tìm bài viết chưa đăng (cột Status rỗng hoặc != 'POSTED')
-      const nextRow = rows.find(row => row.get('Status') !== 'POSTED');
+      // Tìm tất cả bài viết chưa đăng (cột Status rỗng hoặc != 'POSTED')
+      const unpostedRows = rows.filter(row => row.get('Status') !== 'POSTED');
 
-      if (!nextRow) {
+      if (unpostedRows.length === 0) {
         logger.info('Không còn bài viết nào chưa đăng trong Google Sheets.');
-        return null;
+        return [];
       }
 
-      const postData = {
-        rowNumber: nextRow.rowNumber,
-        region: nextRow.get('Region') || '',
-        title: nextRow.get('Title') || '',
-        content: nextRow.get('Content') || '',
-        images: nextRow.get('Images') ? nextRow.get('Images').split(',').map(i => i.trim()) : [],
-      };
-
-      return { row: nextRow, data: postData };
+      return unpostedRows.map(row => {
+        const postData = {
+          rowNumber: row.rowNumber,
+          region: row.get('Region') || '',
+          title: row.get('Title') || '',
+          content: row.get('Content') || '',
+          images: row.get('Images') ? row.get('Images').split(',').map(i => i.trim()) : [],
+        };
+        return { row, data: postData };
+      });
     } catch (error) {
-      logger.error('Lỗi khi lấy bài viết tiếp theo', error);
-      return null;
+      logger.error('Lỗi khi lấy danh sách bài viết chưa đăng', error);
+      return [];
     }
   }
 
