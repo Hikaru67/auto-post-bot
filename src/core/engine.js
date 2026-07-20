@@ -1,11 +1,13 @@
 const googleSheets = require('../data/googleSheets');
 const facebookPublisher = require('../publishers/FacebookPublisher');
+const bannha888Publisher = require('../publishers/Bannha888Publisher');
 const logger = require('../utils/logger');
 
 // Danh sách các nền tảng đăng bài
 // Tương lai (Phase 2) có thể require BatDongSanPublisher và thêm vào mảng này
 const publishers = [
   facebookPublisher,
+  // bannha888Publisher,
 ];
 
 class Engine {
@@ -28,7 +30,7 @@ class Engine {
         // 2. Gửi cho các publisher xử lý
         let allSuccess = true;
         let hasTried = false;
-        
+
         for (const publisher of publishers) {
           try {
             hasTried = true;

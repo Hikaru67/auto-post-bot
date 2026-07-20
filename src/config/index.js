@@ -11,6 +11,9 @@ module.exports = {
     // Mảng groups cũ được thay thế bằng cấu trúc map trong groups.json
     groupsMapPath: './groups.json',
   },
+  bannha888: {
+    cookie: process.env.BANNHA888_COOKIE || '',
+  },
   schedule: {
     cron: process.env.CRON_SCHEDULE || '0 6,12,20 * * *',
   }

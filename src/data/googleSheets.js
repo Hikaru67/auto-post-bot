@@ -51,6 +51,9 @@ class GoogleSheetsService {
           region: row.get('Region') || '',
           title: row.get('Title') || '',
           content: row.get('Content') || '',
+          price: row.get('Price') || '',
+          address: row.get('Address') || '',
+          area: row.get('Area') || '',
           images: row.get('Images') ? row.get('Images').split(',').map(i => i.trim()) : [],
         };
         return { row, data: postData };

@@ -7,6 +7,7 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test-fb": "node tests/test-facebook.js",
+    "test-bannha888": "node tests/test-bannha888.js",
     "test-sheets": "node tests/test-sheets.js",
     "test-flow": "node tests/test-flow.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -15,7 +16,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.16.0",
     "dotenv": "^17.4.2",
+    "form-data": "^4.0.5",
     "google-auth-library": "^9.15.1",
     "google-spreadsheet": "^4.1.1",
     "node-cron": "^4.2.1",
