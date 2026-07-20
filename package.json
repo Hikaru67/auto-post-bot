@@ -10,6 +10,9 @@
     "test-bannha888": "node tests/test-bannha888.js",
     "test-sheets": "node tests/test-sheets.js",
     "test-flow": "node tests/test-flow.js",
+    "crawl": "node src/core/crawlEngine.js",
+    "crawl:dry": "node src/core/crawlEngine.js --dry-run",
+    "test-crawl": "node tests/test-crawl.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

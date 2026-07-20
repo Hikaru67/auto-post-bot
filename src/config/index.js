@@ -16,5 +16,12 @@ module.exports = {
   },
   schedule: {
     cron: process.env.CRON_SCHEDULE || '0 6,12,20 * * *',
-  }
+  },
+  thienKhoi: {
+    baseUrl: 'https://backend.thienkhoi.com',
+    // access_token ban đầu (có thể hết hạn sau vài phút)
+    accessToken: process.env.THIENKHOI_ACCESS_TOKEN || '',
+    // refresh_token (hạn dài hơn ~12h) dùng để lấy access_token mới
+    refreshToken: process.env.THIENKHOI_REFRESH_TOKEN || '',
+  },
 };
