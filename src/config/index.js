@@ -16,6 +16,7 @@ module.exports = {
   },
   schedule: {
     cron: process.env.CRON_SCHEDULE || '0 6,12,20 * * *',
+    crawlCron: process.env.CRAWL_CRON || '0 5,22 * * *',
   },
   thienKhoi: {
     baseUrl: 'https://backend.thienkhoi.com',

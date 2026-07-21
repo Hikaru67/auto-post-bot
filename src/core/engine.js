@@ -7,7 +7,7 @@ const logger = require('../utils/logger');
 // Tương lai (Phase 2) có thể require BatDongSanPublisher và thêm vào mảng này
 const publishers = [
   facebookPublisher,
-  // bannha888Publisher,
+//  bannha888Publisher,
 ];
 
 class Engine {

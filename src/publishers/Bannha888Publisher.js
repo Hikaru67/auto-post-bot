@@ -98,8 +98,8 @@ class Bannha888Publisher extends BasePublisher {
       }
 
       if (uploadedImageUrls.length === 0 && postData.images.length > 0) {
-         logger.warn(`[Bannha888] Không có ảnh nào được upload thành công.`);
-         // Vẫn tiếp tục đăng bài không có ảnh nếu cần, hoặc throw error tùy yêu cầu
+        logger.warn(`[Bannha888] Không có ảnh nào được upload thành công.`);
+        // Vẫn tiếp tục đăng bài không có ảnh nếu cần, hoặc throw error tùy yêu cầu
       }
 
       // Xóa các ảnh local đã tải
@@ -162,7 +162,7 @@ class Bannha888Publisher extends BasePublisher {
 
     } catch (error) {
       logger.error(`[Bannha888] Lỗi nghiêm trọng khi đăng bài:`, error.response?.data || error.message);
-      
+
       // Cleanup local images on error
       localImages.forEach(imgPath => {
         try {

@@ -161,7 +161,7 @@ class FacebookPublisher extends BasePublisher {
           const antiSpamText = `\n\n(ID: ${regionCode}-${antiSpamToken})`;
 
           // Kết hợp Title và Content (nếu có Title)
-          let textToPost = postData.title ? `[${postData.title}]\n\n${postData.content}` : postData.content;
+          let textToPost = postData.content;
           textToPost += antiSpamText; // Gắn anti-spam vào cuối
 
           // Gõ nội dung vào ô textbox
