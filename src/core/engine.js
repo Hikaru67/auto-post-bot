@@ -2,6 +2,7 @@ const googleSheets = require('../data/googleSheets');
 const facebookPublisher = require('../publishers/FacebookPublisher');
 const bannha888Publisher = require('../publishers/Bannha888Publisher');
 const logger = require('../utils/logger');
+const config = require('../config');
 
 // Danh sách các nền tảng đăng bài
 // Tương lai (Phase 2) có thể require BatDongSanPublisher và thêm vào mảng này
@@ -15,13 +16,17 @@ class Engine {
     logger.info('Bắt đầu chu kỳ đăng bài mới...');
     try {
       // 1. Lấy dữ liệu tất cả bài đăng chưa đăng
-      const postsToPublish = await googleSheets.getUnpostedPosts();
-      if (!postsToPublish || postsToPublish.length === 0) {
+      const allUnposted = await googleSheets.getUnpostedPosts();
+      if (!allUnposted || allUnposted.length === 0) {
         logger.info('Kết thúc chu kỳ: Không có bài đăng nào cần đăng hoặc chưa có cấu hình.');
         return;
       }
 
-      logger.info(`Tìm thấy ${postsToPublish.length} bài đăng cần xử lý trong chu kỳ này.`);
+      // Áp dụng giới hạn số bài mỗi trigger
+      const limit = config.schedule.postLimitPerTrigger;
+      const postsToPublish = limit > 0 ? allUnposted.slice(0, limit) : allUnposted;
+
+      logger.info(`Tìm thấy ${allUnposted.length} bài chưa đăng. Chu kỳ này sẽ xử lý ${postsToPublish.length} bài${limit > 0 ? ` (giới hạn: ${limit} bài/trigger)` : ''}.`);
 
       for (const postInfo of postsToPublish) {
         const { row, data } = postInfo;
