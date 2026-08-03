@@ -16,7 +16,7 @@ module.exports = {
   },
   schedule: {
     cron: process.env.CRON_SCHEDULE || '0 6,12,20 * * *',
-    crawlCron: process.env.CRAWL_CRON || '0 5,22 * * *',
+    crawlCron: process.env.CRAWL_CRON || '0 */8 * * *',
     // Số bài tối đa được đăng mỗi lần trigger (0 = không giới hạn)
     postLimitPerTrigger: parseInt(process.env.POST_LIMIT_PER_TRIGGER || '3', 10),
   },

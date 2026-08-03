@@ -89,30 +89,36 @@ function saveTokens(tokens) {
  */
 async function refreshAccessToken(refreshToken) {
   logger.info('[ThienKhoi] Đang làm mới access token...');
-  const resp = await axios.post(
-    `${BASE_URL}/auth/v1/auth/refresh-token`,
-    {
-      refresh_token: refreshToken,
-      appLogin: 'nguonhang',
-      platform: 'web',
-    },
-    {
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/json',
-        origin: 'https://proptech.thienkhoi.com',
-        referer: 'https://proptech.thienkhoi.com/',
-        'user-agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
-          '(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36',
+  try {
+    const resp = await axios.post(
+      `${BASE_URL}/auth/v1/auth/refresh-token`,
+      {
+        refresh_token: refreshToken,
+        appLogin: 'nguonhang',
+        platform: 'web',
       },
-    }
-  );
+      {
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          origin: 'https://proptech.thienkhoi.com',
+          referer: 'https://proptech.thienkhoi.com/',
+          'user-agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+            '(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36',
+        },
+      }
+    );
+    const { access_token, refresh_token: newRefreshToken } = resp.data.data;
+    console.log(resp.data)
+    saveTokens({ access_token, refresh_token: newRefreshToken });
+    logger.info('[ThienKhoi] Làm mới token thành công.');
 
-  const { access_token, refresh_token: newRefreshToken } = resp.data.data;
-  saveTokens({ access_token, refresh_token: newRefreshToken });
-  logger.info('[ThienKhoi] Làm mới token thành công.');
-  return access_token;
+    return access_token;
+  } catch (error) {
+    console.log(error.response.data.message);
+    process.exit(1);
+  }
 }
 
 /**
@@ -271,8 +277,7 @@ function parsePropertyData(listItem, detailData) {
   return {
     Id: listItem.id,
     Title: title,
-    Content: description + `
-📞 LH 0853373255`,
+    Content: description + '\n' + `Giá: ${Math.round((listItem.offeringPrice || 0) * 1_000_000_000)}` + '\n' + `LH 0853373255`,
     Region: REGION_FIXED,
     Images: mediaUrls.join(',\n'),
     Price: Math.round((listItem.offeringPrice || 0) * 1_000_000_000),
@@ -306,7 +311,7 @@ async function crawlProperties({ maxPages = 1, limit = 20, dryRun = false, exist
     try {
       listData = await fetchPropertyList(page, limit, accessToken);
     } catch (err) {
-      logger.error(`[ThienKhoi] Lỗi khi lấy trang ${page}:`, err.message);
+      logger.error(`[ThienKhoi] Lỗi khi lấy trang ${page}:`, err.response.data.message);
       break;
     }
 

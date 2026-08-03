@@ -1,3 +1,11 @@
+// Suppress DEP0040: `punycode` deprecation từ dependency google-spreadsheet
+// Node.js luôn in warning ra stderr trước khi emit event nên cần patch stderr.write
+const _stderrWrite = process.stderr.write.bind(process.stderr);
+process.stderr.write = (chunk, ...args) => {
+  if (typeof chunk === 'string' && chunk.includes('DEP0040')) return true;
+  return _stderrWrite(chunk, ...args);
+};
+
 const scheduler = require('./core/scheduler');
 const logger = require('./utils/logger');
 const config = require('./config');

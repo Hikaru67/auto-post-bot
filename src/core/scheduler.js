@@ -7,6 +7,7 @@ const logger = require('../utils/logger');
 class Scheduler {
   start() {
     logger.info(`Bắt đầu lập lịch với cấu hình cron: ${config.schedule.cron}`);
+    logger.info(`Bắt đầu crawl với cấu hình cron: ${config.schedule.crawlCron}`);
 
     if (!cron.validate(config.schedule.cron)) {
       logger.error('Cấu hình cron không hợp lệ!');

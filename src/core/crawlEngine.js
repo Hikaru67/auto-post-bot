@@ -69,6 +69,9 @@ module.exports = new CrawlEngine();
 
 // ── Chạy trực tiếp: node src/core/crawlEngine.js [--dry-run] [--pages=N] ─────
 if (require.main === module) {
+  // Suppress DEP0040 punycode warning từ google-spreadsheet dependency
+  process.on('warning', (w) => { if (w.code === 'DEP0040') return; process.stderr.write(w.stack + '\n'); });
+
   require('dotenv').config();
 
   const args = process.argv.slice(2);

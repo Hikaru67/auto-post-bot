@@ -53,7 +53,8 @@ class GoogleSheetsService {
       const rows = await sheet.getRows();
 
       // Tìm tất cả bài viết chưa đăng (cột Status rỗng hoặc != 'POSTED')
-      const unpostedRows = rows.filter(row => row.get('Status') !== 'POSTED' && row.get('Status') !== '');
+      // và cột "New Content" và cột "Filtered Images" không rỗng
+      const unpostedRows = rows.filter(row => row.get('Status') !== 'POSTED' && row.get('Status') !== '' && row.get('New Content') !== '' && row.get('Filtered Images') !== '');
 
       if (unpostedRows.length === 0) {
         logger.info('Không còn bài viết nào chưa đăng trong Google Sheets.');
@@ -65,11 +66,11 @@ class GoogleSheetsService {
           rowNumber: row.rowNumber,
           region: row.get('Region') || '',
           title: row.get('Title') || '',
-          content: row.get('Content') || '',
+          content: row.get('New Content') || '',
           price: row.get('Price') || '',
           address: row.get('Address') || '',
           area: row.get('Area') || '',
-          images: row.get('Images') ? row.get('Images').split(',').map(i => i.trim()) : [],
+          images: row.get('Filtered Images') ? row.get('Filtered Images').split(',').map(i => i.trim()) : [],
         };
         return { row, data: postData };
       });
@@ -148,15 +149,15 @@ class GoogleSheetsService {
 
       // Transform sang object row, truncate content dài
       const rowObjects = chunk.map((p) => ({
-        Id:      p.Id,
-        Title:   truncateCell(p.Title),
+        Id: p.Id,
+        Title: truncateCell(p.Title),
         Content: truncateCell(p.Content),
-        Region:  p.Region,
-        Images:  truncateCell(p.Images),
-        Price:   p.Price,
+        Region: p.Region,
+        Images: truncateCell(p.Images),
+        Price: p.Price,
         Address: p.Address,
-        Area:    p.Area,
-        Status:  '',
+        Area: p.Area,
+        Status: '',
       }));
 
       try {
