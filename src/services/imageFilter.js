@@ -21,13 +21,13 @@ const { GeminiPool } = require('./geminiPool');
 
 // ─── Vision-capable models (multimodal) ──────────────────────────────────────
 const VISION_MODELS = [
-  'gemini-2.5-flash-lite', // RPM 30, RPD 1500 ← ưu tiên
-  'gemini-2.0-flash',      // RPM 15, RPD 1500
-  'gemini-1.5-flash'      // RPM 15, RPD 1500
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash-lite',
+  'gemini-2.0-flash'
 ];
 
 const MAX_SINGLE_BATCH = 6;  // Dưới ngưỡng này → 1 request (giữ nhỏ để tránh payload quá lớn)
-const BATCH_SIZE = 6;        // Kích thước batch khi phải chia
+const BATCH_SIZE = 20;        // Kích thước batch khi phải chia
 const BATCH_OVERLAP = 1;     // Số ảnh anchor overlap giữa các batch
 const DOWNLOAD_CONCURRENCY = 5;
 const VISION_ROTATE_SLEEP_MS = 20_000; // Sleep sau 429 trước khi thử model tiếp
